@@ -1,4 +1,4 @@
-package com.dbocharov.jobs.model
+package com.dbocharov.detect.model
 case class Event(
                   unix_time:Long,
                   category_id:Int,

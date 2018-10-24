@@ -1,9 +1,10 @@
-package com.dbocharov.jobs.clean
+package com.dbocharov.detect.jobs.clean
 
-import com.dbocharov.jobs.model.BotRecord
+import com.dbocharov.detect.model.BotRecord
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkConf
 import com.datastax.spark.connector._
+import com.dbocharov.detect.config.{CassandraConfig, CleanExpiredBotsJobConfig}
 
 object CleanExpiredBotsJob {
 
@@ -22,7 +23,7 @@ object CleanExpiredBotsJob {
       ss.sql(sql).rdd
         .map(row => BotRecord(row.getString(0), row.getLong(1)))
         .filter(BotRecord => BotRecord.block_date + 1000 * CleanExpiredBotsJobConfig.expired_duration < System.currentTimeMillis())
-        .deleteFromCassandra("test01", "bot_count_cat")
+        .deleteFromCassandra(CassandraConfig.keyspace, CassandraConfig.table.concat("_count_cat"))
       Thread.sleep(1000*CleanExpiredBotsJobConfig.expired_duration)
     }
 

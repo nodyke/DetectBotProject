@@ -1,8 +1,8 @@
-package com.dbocharov.jobs.dstream
+package com.dbocharov.detect.jobs.dstream
 
 import com.datastax.spark.connector.streaming._
-import com.dbocharov.jobs.DetectBotConfig
-import com.dbocharov.jobs.model.{BotRecord, Event}
+import com.dbocharov.detect.config.{CassandraConfig, DStreamJobConfig, DetectBotConfig, KafkaConfig}
+import com.dbocharov.detect.model.{BotRecord, Event}
 import com.google.gson.{GsonBuilder, JsonObject, JsonParser}
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
@@ -17,7 +17,7 @@ import scala.util.Random
 
 
 
-object DetectBotDStreamJob {
+object DetectBotJob {
 
   private val logger = Logger.getLogger(getClass)
   private val jsonParser = new JsonParser()
@@ -34,7 +34,7 @@ object DetectBotDStreamJob {
       "key.deserializer" -> classOf[StringDeserializer],
       "value.deserializer" -> classOf[StringDeserializer],
       "group.id" -> DStreamJobConfig.APP_NAME.concat("_group").concat(rand.nextInt().toString),
-      "auto.offset.reset" -> DStreamJobConfig.auto_offset_reset_policy ,
+      "auto.offset.reset" -> KafkaConfig.auto_offset_reset_policy ,
       "enable.auto.commit" -> (false: java.lang.Boolean)
     )
   }
@@ -50,7 +50,7 @@ object DetectBotDStreamJob {
       .map(json => jsonParser.parse(json))
       .map(el => el.getAsJsonObject)
       .map(jsonObject => mapJsonEvent(jsonObject))
-      .filter(event => DStreamJobConfig.types.contains(event.event))
+      .filter(event => DetectBotConfig.types.contains(event.event))
       .persist()
   }
 
@@ -122,24 +122,21 @@ object DetectBotDStreamJob {
     //calc per request and detect bots, slide interval = batch interval, default 30 seconds
     val stream_per_r = detectPerRequestBot(stream)
     stream_per_r.print()
-    stream_per_r.saveToCassandra(DStreamJobConfig.keyspace,DStreamJobConfig.table.concat("_per_request"))
-
+    stream_per_r.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table.concat("_per_request"))
 
     //count categories in each ip, slide interval = batch duration, default = 30 seconds
     val stream_count_categories = detectCountCategoryBot(stream)
     stream_count_categories.print()
     stream_count_categories
       .map(pair => pair._1)
-      .saveToCassandra(DStreamJobConfig.keyspace,DStreamJobConfig.table.concat("_count_categories"))
+      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table.concat("_count_categories"))
 
     //detect high difference events
     val stream_high_diff  = detectHighDifferenceEventsBot(stream)
     stream_high_diff.print()
-    stream_high_diff.saveToCassandra(DStreamJobConfig.keyspace,DStreamJobConfig.table.concat("_high_diff"))
+    stream_high_diff.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table.concat("_high_diff"))
 
     //In future bot records will insert in 1 table, but now, insert in separate tables for testing requirements
-
-
 
     scc.start()
     scc.awaitTermination()
