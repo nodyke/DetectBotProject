@@ -1,6 +1,6 @@
 package com.dbocharov.detect.kafka
 
-import com.dbocharov.detect.config.DetectBotConfig
+import com.dbocharov.detect.config.{DetectBotConfig, KafkaConfig}
 import com.dbocharov.detect.model.Event
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.apache.spark.sql.catalyst.ScalaReflection
@@ -16,7 +16,7 @@ object KafkaReader {
       .format("kafka")
       .option("kafka.bootstrap.servers",server)
       .option("subscribe",topic)
-      .option("startingOffsets","earliest")
+      .option("startingOffsets",KafkaConfig.auto_offset_reset_policy)
       .load
       .selectExpr("CAST(value AS STRING)", "CAST(timestamp as TIMESTAMP)")
       .select(from_json($"value",event_schema) as "event", $"timestamp")

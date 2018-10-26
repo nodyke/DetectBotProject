@@ -44,7 +44,7 @@ def writeAsJson(entry, fd = None):
     if fd:
         json.dump(asJson(entry), fd) 
     else: 
-        print(entry)
+        print(json.dumps(asJson(entry))) 
 
 # Log generator for users & bots
 def generate_log(args, start_time):
@@ -64,9 +64,6 @@ def generate_log(args, start_time):
 
         t1 += timedelta(seconds = 1)
 
-    print("generated for period :", start_time,  t2)
-
-
 def do_generate(fd = None):
     first = True
     for entry in generate_log(args, datetime.now()):
@@ -77,7 +74,6 @@ def do_generate(fd = None):
         writeAsJson(entry, fd)         
 
 def main(args):
-    print("started with parameters :", args) 
     if args.file:
         with open(args.file, 'a') as fd:
             do_generate(fd)

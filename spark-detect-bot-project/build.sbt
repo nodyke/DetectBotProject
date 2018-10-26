@@ -12,6 +12,13 @@ libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "2.3.2"
 libraryDependencies += "com.datastax.spark" %% "spark-cassandra-connector" % "2.3.2"
 libraryDependencies += "com.google.code.gson" % "gson" % "2.6.2"
 libraryDependencies += "org.apache.kafka" % "kafka-clients" % "2.0.0"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % Test
+libraryDependencies += "com.holdenkarau" %% "spark-testing-base" % "2.3.1_0.10.0" % Test excludeAll(
+  ExclusionRule(organization = "org.scalacheck"),
+  ExclusionRule(organization = "org.scalactic"),
+  ExclusionRule(organization = "org.scalatest")
+)
+parallelExecution in Test := false
 
 
 
