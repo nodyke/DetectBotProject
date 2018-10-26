@@ -7,7 +7,6 @@ import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.functions.from_json
 import org.apache.spark.sql.types.StructType
 
-
 object KafkaReader {
   private val event_schema = ScalaReflection.schemaFor[Event].dataType.asInstanceOf[StructType]
   def getKafkaStructureStream(sc:SparkSession,server:String,topic:String) = {

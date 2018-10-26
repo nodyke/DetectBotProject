@@ -7,7 +7,9 @@ import com.datastax.spark.connector._
 import com.dbocharov.detect.config.{CassandraConfig, CleanExpiredBotsJobConfig}
 
 object CleanExpiredBotsJob {
-  val sql = "select * from test01.bot"
+  val keyspace = CassandraConfig.keyspace
+  val table = CassandraConfig.table
+  val sql = s"select * from $keyspace.$table"
 
   def main(args: Array[String]): Unit = {
     val sparkConf = new SparkConf()
