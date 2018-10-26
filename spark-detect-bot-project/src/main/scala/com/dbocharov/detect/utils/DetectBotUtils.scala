@@ -1,6 +1,5 @@
 package com.dbocharov.detect.utils
 
-import com.dbocharov.detect.config.DetectBotConfig
 import com.dbocharov.detect.model.Event
 
 object DetectBotUtils {

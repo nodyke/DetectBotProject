@@ -6,9 +6,7 @@ import com.dbocharov.detect.kafka.KafkaReader
 import com.dbocharov.detect.model.{BotRecord, Event}
 import com.dbocharov.detect.utils.{DetectBotUtils, SparkUtils}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
-import org.apache.spark.sql.expressions._
 import org.apache.spark.sql.functions._
-
 
 object DetectHighDifferenceBotJob {
   case class IsBotEntity(
@@ -38,10 +36,8 @@ object DetectHighDifferenceBotJob {
     val sc = SparkUtils.initSparkSession(this.getClass.getName)
     val connector = CassandraConnector.apply(sc.sparkContext)
     import SparkUtils.BotWriter
-
     detect(sc,KafkaReader.getKafkaStructureStream(sc,bootstrap_server,topic),DetectBotConfig.max_diff)
-      .writeBotToCassandra(connector,CassandraConfig.keyspace,CassandraConfig.table.concat("_high_diff"))
-
+      .writeBotToCassandra(connector,CassandraConfig.keyspace,CassandraConfig.table)
   }
 
 }

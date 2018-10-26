@@ -14,7 +14,6 @@ object SparkUtils {
       .getOrCreate()
   }
 
-
   implicit class BotWriter(stream:Dataset[BotRecord]){
   def writeBotToCassandra(cassandraConnector: CassandraConnector,keyspace: String, table: String) = {
     stream
@@ -24,12 +23,8 @@ object SparkUtils {
       .outputMode("update")
       .start()
       .awaitTermination()
+    }
   }
-  }
-
-
-
-
   def getCassandraWriter(cassandraConnector: CassandraConnector,keyspace:String,table:String) ={
     new ForeachWriter[BotRecord] {
       override def open(partitionId: Long, version: Long): Boolean = true

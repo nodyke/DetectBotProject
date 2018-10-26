@@ -17,7 +17,10 @@ import org.apache.spark.streaming.kafka010._
 object DetectBotJob {
 
   private val logger = Logger.getLogger(getClass)
+  private val jsonParser = new JsonParser()
+  private val gson = new GsonBuilder().setLenient().create()
 
+  def mapJsonEvent(jsonObject: JsonObject):Event = gson.fromJson(jsonObject,classOf[Event])
 
   def getKafkaParams(server:String):Map[String,Object] = {
     //Temp for testing, need for generate group id, cause temporary can't reset consumer group offset, some bug
@@ -31,16 +34,12 @@ object DetectBotJob {
     )
   }
 
-    private val jsonParser = new JsonParser()
-    private val gson = new GsonBuilder().setLenient().create()
-    private def mapJsonEvent(jsonObject: JsonObject):Event = gson.fromJson(jsonObject,classOf[Event])
     def mapToEvent(stream: DStream[String]) ={
       stream
         .map(json => jsonParser.parse(json))
         .map(el => el.getAsJsonObject)
         .map(jsonObject => mapJsonEvent(jsonObject))
     }
-
 
   def getEventsFromKafka(server:String,topics:Array[String],scc:StreamingContext):DStream[Event] = {
     mapToEvent(KafkaUtils.createDirectStream[String, String](
@@ -95,30 +94,24 @@ object DetectBotJob {
   def main(args: Array[String]): Unit = {
     val bootstrap_server = if(args.length > 0) args(0) else "127.0.0.1:9092"
     val topics = if(args.length > 1) Array(args(1)) else Array("events")
-
     //Init spark app and spark context
     val scc = initSparkStreamingContext("checkpoint_dir")
-
     //Get event from kafka
     val stream = getEventsFromKafka(bootstrap_server,topics,scc)
-
     //calc per request and detect bots, slide interval = batch interval, default 30 seconds
     val stream_per_r = detectPerRequestBot(stream,DetectBotConfig.per_req)
     stream_per_r.print()
-    stream_per_r.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table.concat("_per_request"))
-
+    stream_per_r.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
     //count categories in each ip, slide interval = batch duration, default = 30 seconds
     val stream_count_categories = detectCountCategoryBot(stream,DetectBotConfig.count_category)
     stream_count_categories.print()
     stream_count_categories
       .map(pair => pair._1)
-      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table.concat("_count_categories"))
-
+      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
     //detect high difference events
     val stream_high_diff  = detectHighDifferenceEventsBot(stream,DetectBotConfig.max_diff)
     stream_high_diff.print()
-    stream_high_diff.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table.concat("_high_diff"))
-
+    stream_high_diff.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
     scc.start()
     scc.awaitTermination()
   }

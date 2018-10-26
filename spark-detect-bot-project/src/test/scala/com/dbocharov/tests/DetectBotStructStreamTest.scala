@@ -11,7 +11,6 @@ class DetectBotStructStreamTest extends FunSuite with BeforeAndAfterAll {
   private val fileName:String = "test.json"
   private var ds:Dataset[Row] = _
 
-
   test("Detect per request bot in struct stream"){
     assert(DetectPerRequestBotJob.detect(spark_session,ds,5).count() == 1)
   }
@@ -30,7 +29,6 @@ class DetectBotStructStreamTest extends FunSuite with BeforeAndAfterAll {
     ds = spark_session.read.json(fileName)
       .withColumn("timestamp",current_timestamp())
   }
-
 
   override protected def afterAll(): Unit = {
     super.afterAll()
