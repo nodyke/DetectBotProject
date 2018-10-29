@@ -32,6 +32,7 @@ class DetectBotStructStreamTest extends FunSuite with BeforeAndAfterAll {
 
   override protected def afterAll(): Unit = {
     super.afterAll()
+    spark_session.close()
   }
 
 
