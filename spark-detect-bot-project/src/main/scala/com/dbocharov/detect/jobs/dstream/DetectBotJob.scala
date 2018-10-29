@@ -71,14 +71,14 @@ object DetectBotJob {
       .map(pair => BotRecord(pair._1,System.currentTimeMillis()))
   }
 
-  def detectCountCategoryBot(stream: DStream[Event],max_count:Long):DStream[(BotRecord,Int)] = {
+  def detectCountCategoryBot(stream: DStream[Event],max_count:Long):DStream[BotRecord] = {
     stream
       .map(event => (event.ip,event.category_id))
       .transform(rdd => rdd.distinct())
       .groupByKeyAndWindow(Seconds(600))
       .map(pair => (pair._1, pair._2.size))
       .filter(pair => pair._2 > max_count)
-      .map(pair => (BotRecord(pair._1, System.currentTimeMillis()),pair._2))
+      .map(pair => BotRecord(pair._1,System.currentTimeMillis()))
   }
 
   def initSparkStreamingContext(checkpoint_dir:String) = {
@@ -99,19 +99,16 @@ object DetectBotJob {
     //Get event from kafka
     val stream = getEventsFromKafka(bootstrap_server,topics,scc)
     //calc per request and detect bots, slide interval = batch interval, default 30 seconds
-    val stream_per_r = detectPerRequestBot(stream,DetectBotConfig.per_req)
-    stream_per_r.print()
-    stream_per_r.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
+
+    detectPerRequestBot(stream,DetectBotConfig.per_req)
+      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
     //count categories in each ip, slide interval = batch duration, default = 30 seconds
-    val stream_count_categories = detectCountCategoryBot(stream,DetectBotConfig.count_category)
-    stream_count_categories.print()
-    stream_count_categories
-      .map(pair => pair._1)
+    detectCountCategoryBot(stream,DetectBotConfig.count_category)
       .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
     //detect high difference events
-    val stream_high_diff  = detectHighDifferenceEventsBot(stream,DetectBotConfig.max_diff)
-    stream_high_diff.print()
-    stream_high_diff.saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
+    detectHighDifferenceEventsBot(stream,DetectBotConfig.max_diff)
+      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
+
     scc.start()
     scc.awaitTermination()
   }

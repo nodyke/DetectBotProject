@@ -28,7 +28,7 @@ object DetectCountCategoryBotJob {
     val connector = CassandraConnector.apply(sc.sparkContext)
     import SparkUtils.BotWriter
     detect(sc,KafkaReader.getKafkaStructureStream(sc,bootstrap_server,topic),DetectBotConfig.count_category)
-    .writeBotToCassandra(connector,CassandraConfig.keyspace,CassandraConfig.table)
+      .writeBotToCassandra(connector,CassandraConfig.keyspace,CassandraConfig.table)
 
   }
 }
