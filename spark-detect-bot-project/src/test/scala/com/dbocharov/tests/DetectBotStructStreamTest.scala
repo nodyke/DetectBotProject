@@ -1,5 +1,7 @@
 package com.dbocharov.tests
 
+import java.util.concurrent.Executors
+
 import com.dbocharov.detect.jobs.structstream._
 import com.dbocharov.detect.utils.SparkUtils
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
@@ -32,7 +34,15 @@ class DetectBotStructStreamTest extends FunSuite with BeforeAndAfterAll {
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    spark_session.close()
+    try {
+      if (spark_session != null && !spark_session.sparkContext.isStopped) {
+        spark_session.close()
+      }
+    }
+    catch {
+      case _:Throwable => println("Spark session doesn't close!");
+    }
+
   }
 
 
