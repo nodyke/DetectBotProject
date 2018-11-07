@@ -6,7 +6,6 @@ import com.dbocharov.detect.model.{BotRecord, Event}
 import com.dbocharov.detect.utils.DetectBotUtils
 import com.google.gson.{GsonBuilder, JsonObject, JsonParser}
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.dstream.DStream
@@ -15,15 +14,12 @@ import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010._
 
 object DetectBotJob {
-
-  private val logger = Logger.getLogger(getClass)
   private val jsonParser = new JsonParser()
   private val gson = new GsonBuilder().setLenient().create()
 
   def mapJsonEvent(jsonObject: JsonObject): Event = gson.fromJson(jsonObject, classOf[Event])
 
   def getKafkaParams(server: String): Map[String, Object] = {
-    //Temp for testing, need for generate group id, cause temporary can't reset consumer group offset, some bug
     Map[String, Object](
       "bootstrap.servers" -> server,
       "key.deserializer" -> classOf[StringDeserializer],
