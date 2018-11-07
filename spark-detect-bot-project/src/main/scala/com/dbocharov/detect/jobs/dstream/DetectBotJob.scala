@@ -20,28 +20,28 @@ object DetectBotJob {
   private val jsonParser = new JsonParser()
   private val gson = new GsonBuilder().setLenient().create()
 
-  def mapJsonEvent(jsonObject: JsonObject):Event = gson.fromJson(jsonObject,classOf[Event])
+  def mapJsonEvent(jsonObject: JsonObject): Event = gson.fromJson(jsonObject, classOf[Event])
 
-  def getKafkaParams(server:String):Map[String,Object] = {
+  def getKafkaParams(server: String): Map[String, Object] = {
     //Temp for testing, need for generate group id, cause temporary can't reset consumer group offset, some bug
     Map[String, Object](
       "bootstrap.servers" -> server,
       "key.deserializer" -> classOf[StringDeserializer],
       "value.deserializer" -> classOf[StringDeserializer],
       "group.id" -> DStreamJobConfig.APP_NAME.concat("_group"),
-      "auto.offset.reset" -> KafkaConfig.auto_offset_reset_policy ,
+      "auto.offset.reset" -> KafkaConfig.auto_offset_reset_policy,
       "enable.auto.commit" -> (false: java.lang.Boolean)
     )
   }
 
-    def mapToEvent(stream: DStream[String]) ={
-      stream
-        .map(json => jsonParser.parse(json))
-        .map(el => el.getAsJsonObject)
-        .map(jsonObject => mapJsonEvent(jsonObject))
-    }
+  def mapToEvent(stream: DStream[String]) = {
+    stream
+      .map(json => jsonParser.parse(json))
+      .map(el => el.getAsJsonObject)
+      .map(jsonObject => mapJsonEvent(jsonObject))
+  }
 
-  def getEventsFromKafka(server:String,topics:Array[String],scc:StreamingContext):DStream[Event] = {
+  def getEventsFromKafka(server: String, topics: Array[String], scc: StreamingContext): DStream[Event] = {
     mapToEvent(KafkaUtils.createDirectStream[String, String](
       scc,
       PreferConsistent,
@@ -54,60 +54,60 @@ object DetectBotJob {
       .persist()
   }
 
-  def detectHighDifferenceEventsBot(stream:DStream[Event],max_seconds:Int):DStream[BotRecord] = {
+  def detectHighDifferenceEventsBot(stream: DStream[Event], max_seconds: Int): DStream[BotRecord] = {
     stream
-      .map(event => (event.ip,event))
+      .map(event => (event.ip, event))
       .groupByKey()
-      .mapValues(iter => DetectBotUtils.checkHighDifferenceBot(iter,max_seconds))
+      .mapValues(iter => DetectBotUtils.checkHighDifferenceBot(iter, max_seconds))
       .filter(pair => pair._2)
-      .map(pair => BotRecord(pair._1,System.currentTimeMillis()))
+      .map(pair => BotRecord(pair._1, System.currentTimeMillis()))
   }
 
-  def detectPerRequestBot(stream:DStream[Event],max_count:Long):DStream[BotRecord] = {
+  def detectPerRequestBot(stream: DStream[Event], max_count: Long): DStream[BotRecord] = {
     stream
-      .map(event => (event.ip,1))
+      .map(event => (event.ip, 1))
       .reduceByKeyAndWindow((accum, sum) => accum + sum, Seconds(600))
       .filter(pair => pair._2 > max_count)
-      .map(pair => BotRecord(pair._1,System.currentTimeMillis()))
+      .map(pair => BotRecord(pair._1, System.currentTimeMillis()))
   }
 
-  def detectCountCategoryBot(stream: DStream[Event],max_count:Long):DStream[BotRecord] = {
+  def detectCountCategoryBot(stream: DStream[Event], max_count: Long): DStream[BotRecord] = {
     stream
-      .map(event => (event.ip,event.category_id))
+      .map(event => (event.ip, event.category_id))
       .transform(rdd => rdd.distinct())
       .groupByKeyAndWindow(Seconds(600))
       .map(pair => (pair._1, pair._2.size))
       .filter(pair => pair._2 > max_count)
-      .map(pair => BotRecord(pair._1,System.currentTimeMillis()))
+      .map(pair => BotRecord(pair._1, System.currentTimeMillis()))
   }
 
-  def initSparkStreamingContext(checkpoint_dir:String) = {
+  def initSparkStreamingContext(checkpoint_dir: String) = {
     val sparkConf = new SparkConf()
       .setAppName(DStreamJobConfig.APP_NAME)
       .setMaster("local[*]")
-      .set("spark.cassandra.connection.keep_alive_ms","600000")
+      .set("spark.cassandra.connection.keep_alive_ms", "600000")
     val scc = new StreamingContext(sparkConf, DStreamJobConfig.batch_duration)
     scc.checkpoint(checkpoint_dir)
     scc
   }
 
   def main(args: Array[String]): Unit = {
-    val bootstrap_server = if(args.length > 0) args(0) else "127.0.0.1:9092"
-    val topics = if(args.length > 1) Array(args(1)) else Array("events")
+    val bootstrap_server = if (args.length > 0) args(0) else "127.0.0.1:9092"
+    val topics = if (args.length > 1) Array(args(1)) else Array("events")
     //Init spark app and spark context
     val scc = initSparkStreamingContext("checkpoint_dir")
     //Get event from kafka
-    val stream = getEventsFromKafka(bootstrap_server,topics,scc)
+    val stream = getEventsFromKafka(bootstrap_server, topics, scc)
     //calc per request and detect bots, slide interval = batch interval, default 30 seconds
 
-    detectPerRequestBot(stream,DetectBotConfig.per_req)
-      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
+    detectPerRequestBot(stream, DetectBotConfig.per_req)
+      .saveToCassandra(CassandraConfig.keyspace, CassandraConfig.table)
     //count categories in each ip, slide interval = batch duration, default = 30 seconds
-    detectCountCategoryBot(stream,DetectBotConfig.count_category)
-      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
+    detectCountCategoryBot(stream, DetectBotConfig.count_category)
+      .saveToCassandra(CassandraConfig.keyspace, CassandraConfig.table)
     //detect high difference events
-    detectHighDifferenceEventsBot(stream,DetectBotConfig.max_diff)
-      .saveToCassandra(CassandraConfig.keyspace,CassandraConfig.table)
+    detectHighDifferenceEventsBot(stream, DetectBotConfig.max_diff)
+      .saveToCassandra(CassandraConfig.keyspace, CassandraConfig.table)
 
     scc.start()
     scc.awaitTermination()
