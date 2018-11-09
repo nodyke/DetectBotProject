@@ -1,9 +1,7 @@
 package com.dbocharov.detect.jobs.clean
 
-import com.dbocharov.detect.model.BotRecord
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkConf
-import org.apache.spark.sql.cassandra._
 import com.datastax.spark.connector._
 import com.dbocharov.detect.config.{CassandraConfig, CleanExpiredBotsJobConfig}
 
